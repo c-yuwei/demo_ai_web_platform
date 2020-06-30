@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link href="./index_files/bootstrap.min.css" rel="stylesheet">
+    <link href="./index_files/cornerstone.min.css" rel="stylesheet">
+<style piggy-ext="" data-styled-version="4.4.1"></style><style piggy-ext="" data-styled-version="4.4.1"></style></head>
+
+<body data-gr-c-s-loaded="true">
+    
+<div class="container">
+  <div class="page-header">
+    <h1><center>Chest X-Ray AI Assessment</center></h1>
+  </div>
+  <br>
+  <div class="row">
+    <div class="col-md-7">
+      <div id="imageShow" style="width:640px;height:800px;position:relative;color: white;display:inline-block;border-style:solid;border-color:black;" oncontextmenu="return false" class="disable-selection noIbar" unselectable="on" onselectstart="return false;" onmousedown="return false;">          
+        <div id="dicomImage" style="width:640px;height:800px;top:0px;left:0px; position: absolute;">  
+      </div> 
+    </div>
+  </div>
+  <div class="col-md-5">
+    <p class="lead">AI Assessment Results (Probability, %)</p>
+    <span>Filename: </span><span id="filename"></span><br>
+    <span>Atelectasis: </span><span id="atelectasis"></span><br>
+    <span>Consolidation: </span><span id="consolidation"></span><br>
+    <span>Infiltration: </span><span id="infiltration"></span><br>
+    <span>Pneumothorax: </span><span id="pneumothorax"></span><br>
+    <span>Edema: </span><span id="edema"></span><br>
+    <span>Emphysema: </span><span id="emphysema"></span><br>
+    <span>Fibrosis: </span><span id="fibrosis"></span><br>
+    <span>Effusion: </span><span id="effusion"></span><br>
+    <span>Pneumonia: </span><span id="pneumonia"></span><br>
+    <span>Pleural thickening: </span><span id="pleural_thickening"></span><br>
+    <span>Cardiomegaly: </span><span id="cardiomegaly"></span><br>
+    <span>Nodule: </span><span id="nodule"></span><br>
+    <span>Mass: </span><span id="mass"></span><br>
+    <span>Hernia: </span><span id="hernia"></span><br> 
+  </div>
+</div>
+
+<!-- include the library -->
+<script src="./index_files/cornerstone.min.js"></script>
+<script src="./index_files/cornerstoneMath.min.js"></script>
+<script src="./index_files/cornerstoneTools.min.js"></script>
+<script src="./index_files/dicomParser.min.js"></script>
+<script src="./index_files/cornerstoneWADOImageLoader.js"></script>
+<script src="./index_files/uids.js"></script>
+<script>window.cornerstoneWADOImageLoader || document.write('<script src="https://unpkg.com/cornerstone-wado-image-loader">\x3C/script>')</script>
+<script src="./index_files/cornerstone-wado-image-loader"></script>
+<script src="./index_files/initializeWebWorkers.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+<script>
+  cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+  // this function gets called once the user drops the file onto the div
+  function handleFileSelect(evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+    const files = evt.dataTransfer.files;
+    const file = files[0];
+    const element = document.getElementById('dicomImage');
+    const reader  = new FileReader();
+    const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(file);
+    loadAndViewImage(imageId);
+    uploadedFileName = file;
+  }
+
+  function handleDragOver(evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+    evt.dataTransfer.dropEffect = 'copy';
+  }
+  const dropZone = document.getElementById('imageShow');
+  dropZone.addEventListener('dragover', handleDragOver, false);
+  dropZone.addEventListener('drop', handleFileSelect, false);
+  cornerstoneWADOImageLoader.configure({
+    beforeSend: function(xhr) {
+    },
+    useWebWorkers: true,
+  });
+let loaded = false;
+
+    function loadAndViewImage(imageId) {
+        const element = document.getElementById('dicomImage');
+        const start = new Date().getTime();
+        cornerstone.loadImage(imageId).then(function(image) {
+            console.log(image);
+            const viewport = cornerstone.getDefaultViewportForImage(element, image);
+            cornerstone.displayImage(element, image, viewport);
+            if(loaded === false) {
+                cornerstoneTools.mouseInput.enable(element);
+                cornerstoneTools.mouseWheelInput.enable(element);
+                cornerstoneTools.wwwc.activate(element, 1); // ww/wc is the default tool for left mouse button
+                cornerstoneTools.pan.activate(element, 2); // pan is the default tool for middle mouse button
+                cornerstoneTools.zoom.activate(element, 4); // zoom is the default tool for right mouse button
+                cornerstoneTools.zoomWheel.activate(element); // zoom is the default tool for middle mouse wheel
+
+                cornerstoneTools.imageStats.enable(element);
+                loaded = true;
+            }
+
+            function getTransferSyntax() {
+                const value = image.data.string('x00020010');
+                return value + ' [' + uids[value] + ']';
+            }
+
+            function getSopClass() {
+                const value = image.data.string('x00080016');
+                return value + ' [' + uids[value] + ']';
+            }
+
+            function getPixelRepresentation() {
+                const value = image.data.uint16('x00280103');
+                if(value === undefined) {
+                    return;
+                }
+                return value + (value === 0 ? ' (unsigned)' : ' (signed)');
+            }
+
+            function getPlanarConfiguration() {
+                const value = image.data.uint16('x00280006');
+                if(value === undefined) {
+                    return;
+                }
+                return value + (value === 0 ? ' (pixel)' : ' (plane)');
+            }
+
+            document.getElementById('transferSyntax').textContent = getTransferSyntax();
+            document.getElementById('sopClass').textContent = getSopClass();
+            document.getElementById('samplesPerPixel').textContent = image.data.uint16('x00280002');
+            document.getElementById('photometricInterpretation').textContent = image.data.string('x00280004');
+            document.getElementById('numberOfFrames').textContent = image.data.string('x00280008');
+            document.getElementById('planarConfiguration').textContent = getPlanarConfiguration();
+            document.getElementById('rows').textContent = image.data.uint16('x00280010');
+            document.getElementById('columns').textContent = image.data.uint16('x00280011');
+            document.getElementById('pixelSpacing').textContent = image.data.string('x00280030');
+            document.getElementById('bitsAllocated').textContent = image.data.uint16('x00280100');
+            document.getElementById('bitsStored').textContent = image.data.uint16('x00280101');
+            document.getElementById('highBit').textContent = image.data.uint16('x00280102');
+            document.getElementById('pixelRepresentation').textContent = getPixelRepresentation();
+            document.getElementById('windowCenter').textContent = image.data.string('x00281050');
+            document.getElementById('windowWidth').textContent = image.data.string('x00281051');
+            document.getElementById('rescaleIntercept').textContent = image.data.string('x00281052');
+            document.getElementById('rescaleSlope').textContent = image.data.string('x00281053');
+            document.getElementById('basicOffsetTable').textContent = image.data.elements.x7fe00010 && image.data.elements.x7fe00010.basicOffsetTable ? image.data.elements.x7fe00010.basicOffsetTable.length : '';
+            document.getElementById('fragments').textContent = image.data.elements.x7fe00010 && image.data.elements.x7fe00010.fragments ? image.data.elements.x7fe00010.fragments.length : '';
+            document.getElementById('minStoredPixelValue').textContent = image.minPixelValue;
+            document.getElementById('maxStoredPixelValue').textContent = image.maxPixelValue;
+            const end = new Date().getTime();
+            const time = end - start;
+            document.getElementById('totalTime').textContent = time + "ms";
+            document.getElementById('loadTime').textContent = image.loadTimeInMS + "ms";
+            document.getElementById('decodeTime').textContent = image.decodeTimeInMS + "ms";
+
+        }, function(err) {
+            alert(err);
+        });
+    }
+
+    cornerstone.events.addEventListener('cornerstoneimageloadprogress', function(event) {
+        const eventData = event.detail;
+        const loadProgress = document.getElementById('loadProgress');
+        loadProgress.textContent = `Image Load Progress: ${eventData.percentComplete}%`;
+    });
+
+    const element = document.getElementById('dicomImage');
+    cornerstone.enable(element);
+</script>
+</html>
