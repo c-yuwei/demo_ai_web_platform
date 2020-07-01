@@ -9,6 +9,5 @@ A fully step-by-step demo on AI-based web platfrom for Pneumonia detection using
 - tensorflowJS →`npm install @tensorflow/tfjs`, `npm install @tensorflow/tfjs-node`
 - pydicom →`pip install pydicom`
 - opencv →`pip install opencv-python`
-- opencv →`pip install mudicom`
-- opencv →`pip install Pillow`
-- opencv →`pip install opencv-python`
+- mudicom →`pip install mudicom`
+- Pillow →`pip install Pillow`
